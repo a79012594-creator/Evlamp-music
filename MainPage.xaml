@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="EVLAMP.Music.MainPage"
+             BackgroundColor="#08060D"
+             Title="EVLAMP Music">
+    <Grid Padding="20" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="16">
+        <VerticalStackLayout Grid.Row="0" Spacing="2">
+            <Label Text="EVLAMP" FontSize="30" FontAttributes="Bold" TextColor="#C084FC"/>
+            <Label Text="M U S I C" FontSize="12" CharacterSpacing="5" TextColor="#B8A9C9"/>
+        </VerticalStackLayout>
+
+        <Button Grid.Row="1" Text="＋  Добавить песни" Clicked="OnAddSongs"
+                BackgroundColor="#29163D" TextColor="#E9D5FF" BorderColor="#A855F7"
+                BorderWidth="1" CornerRadius="16" HeightRequest="52"/>
+
+        <CollectionView Grid.Row="2" x:Name="QueueView" SelectionMode="Single"
+                        SelectionChanged="OnSongSelected">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="20" Spacing="8" VerticalOptions="Center">
+                    <Label Text="Очередь пока пуста" TextColor="#E9D5FF" FontSize="18"
+                           HorizontalTextAlignment="Center"/>
+                    <Label Text="Добавь свои MP3, M4A, WAV или другие поддерживаемые файлы."
+                           TextColor="#B8A9C9" HorizontalTextAlignment="Center"/>
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border BackgroundColor="#171020" Stroke="#332044" StrokeThickness="1"
+                            Padding="12" Margin="0,3" StrokeShape="RoundRectangle 12">
+                        <Grid ColumnDefinitions="36,*,Auto" ColumnSpacing="10">
+                            <Label Text="♫" FontSize="22" TextColor="#C084FC" VerticalOptions="Center"/>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                <Label Text="{Binding Name}" TextColor="#FFFFFF" FontAttributes="Bold"
+                                       LineBreakMode="TailTruncation"/>
+                                <Label Text="{Binding Subtitle}" TextColor="#B8A9C9" FontSize="11"
+                                       LineBreakMode="TailTruncation"/>
+                            </VerticalStackLayout>
+                            <Button Grid.Column="2" Text="×" Clicked="OnRemoveSong"
+                                    CommandParameter="{Binding .}" BackgroundColor="Transparent"
+                                    TextColor="#C084FC" FontSize="22" Padding="4,0"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Border Grid.Row="3" BackgroundColor="#171020" Stroke="#6B21A8" StrokeThickness="1"
+                Padding="16" StrokeShape="RoundRectangle 18">
+            <VerticalStackLayout Spacing="12">
+                <Label x:Name="NowPlayingLabel" Text="Ничего не играет" TextColor="#FFFFFF"
+                       FontSize="16" FontAttributes="Bold" LineBreakMode="TailTruncation"/>
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                    <Button Text="⏮" Clicked="OnPrevious" BackgroundColor="#29163D" TextColor="#E9D5FF"/>
+                    <Button Grid.Column="1" x:Name="PlayButton" Text="▶" Clicked="OnPlayPause"
+                            BackgroundColor="#7E22CE" TextColor="White"/>
+                    <Button Grid.Column="2" Text="⏭" Clicked="OnNext" BackgroundColor="#29163D" TextColor="#E9D5FF"/>
+                    <Button Grid.Column="3" Text="⇄" x:Name="ShuffleButton" Clicked="OnShuffle"
+                            BackgroundColor="#29163D" TextColor="#E9D5FF"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button Text="Повтор: выкл." x:Name="RepeatButton" Clicked="OnRepeat"
+                            BackgroundColor="#21152D" TextColor="#C084FC" FontSize="12"/>
+                    <Button Grid.Column="1" Text="Очистить очередь" Clicked="OnClear"
+                            BackgroundColor="#21152D" TextColor="#B8A9C9" FontSize="12"/>
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+        <Label Grid.Row="4" Text="LOCAL MUSIC  •  NO STREAMING" TextColor="#6E5A80"
+               FontSize="10" HorizontalTextAlignment="Center" CharacterSpacing="2"/>
+    </Grid>
+</ContentPage>
