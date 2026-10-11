@@ -1,7 +1,8 @@
-using Android.App;
-using Android.Content;
-using Android.Media;
-using Android.OS;
+
+using global::Android.App;
+using global::Android.Content;
+using global::Android.Media;
+using global::Android.OS;
 using AndroidX.Core.App;
 
 namespace EVLAMP.Music.Platforms.Android;
@@ -35,46 +36,56 @@ public class MusicPlaybackService : Service
         StartCommandFlags flags,
         int startId)
     {
-        var action = intent?.Action;
-
-        if (action == ActionPlay)
+        switch (intent?.Action)
         {
-            var uriText = intent?.GetStringExtra(ExtraUri);
-            _currentTitle = intent?.GetStringExtra(ExtraTitle) ?? "EVLAMP Music";
-
-            if (!string.IsNullOrWhiteSpace(uriText))
-                PlayUri(global::Android.Net.Uri.Parse(uriText), _currentTitle);
-            else if (_player != null && !_player.IsPlaying)
+            case ActionPlay:
             {
-                try
-                {
-                    _player.Start();
-                    ShowNotification(_currentTitle, true);
-                }
-                catch
-                {
-                    StopPlayer();
-                }
-            }
-        }
-        else if (action == ActionPause)
-        {
-            if (_player?.IsPlaying == true)
-                _player.Pause();
+                string? uriText = intent.GetStringExtra(ExtraUri);
+                _currentTitle =
+                    intent.GetStringExtra(ExtraTitle) ?? "EVLAMP Music";
 
-            ShowNotification(_currentTitle, false);
-        }
-        else if (action == ActionStop)
-        {
-            StopPlayer();
-            StopForeground(StopForegroundFlags.Remove);
-            StopSelf();
+                if (!string.IsNullOrWhiteSpace(uriText))
+                {
+                    PlayUri(
+                        global::Android.Net.Uri.Parse(uriText),
+                        _currentTitle);
+                }
+                else if (_player != null && !_player.IsPlaying)
+                {
+                    try
+                    {
+                        _player.Start();
+                        ShowNotification(_currentTitle, true);
+                    }
+                    catch
+                    {
+                        StopPlayer();
+                    }
+                }
+
+                break;
+            }
+
+            case ActionPause:
+                if (_player?.IsPlaying == true)
+                    _player.Pause();
+
+                ShowNotification(_currentTitle, false);
+                break;
+
+            case ActionStop:
+                StopPlayer();
+                StopForeground(StopForegroundFlags.Remove);
+                StopSelf();
+                break;
         }
 
         return StartCommandResult.NotSticky;
     }
 
-    private void PlayUri(Android.Net.Uri uri, string title)
+    private void PlayUri(
+        global::Android.Net.Uri uri,
+        string title)
     {
         try
         {
@@ -97,8 +108,15 @@ public class MusicPlaybackService : Service
                 if (_player == null)
                     return;
 
-                _player.Start();
-                ShowNotification(_currentTitle, true);
+                try
+                {
+                    _player.Start();
+                    ShowNotification(_currentTitle, true);
+                }
+                catch
+                {
+                    StopPlayer();
+                }
             };
 
             _player.Completion += (_, _) =>
@@ -126,19 +144,21 @@ public class MusicPlaybackService : Service
         }
     }
 
-    private Notification BuildNotification(string title, bool playing)
+    private Notification BuildNotification(
+        string title,
+        bool playing)
     {
-        var action = playing ? ActionPause : ActionPlay;
+        string action = playing ? ActionPause : ActionPlay;
 
-        var actionIntent = new Intent(this, Class)
+        Intent actionIntent = new Intent(this, Class)
             .SetAction(action);
 
-        var pendingIntent = PendingIntent.GetService(
+        PendingIntent pendingIntent = PendingIntent.GetService(
             this,
             1,
             actionIntent,
             PendingIntentFlags.UpdateCurrent |
-            PendingIntentFlags.Immutable);
+            PendingIntentFlags.Immutable)!;
 
         var builder = new NotificationCompat.Builder(this, ChannelId)
             .SetContentTitle(title)
@@ -167,21 +187,22 @@ public class MusicPlaybackService : Service
 
     private void CreateChannel()
     {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
-        {
-            var channel = new NotificationChannel(
-                ChannelId,
-                "EVLAMP playback",
-                NotificationImportance.Low)
-            {
-                Description = "Управление воспроизведением EVLAMP Music"
-            };
+        if (global::Android.OS.Build.VERSION.SdkInt
+            < global::Android.OS.BuildVersionCodes.O)
+            return;
 
-            if (GetSystemService(NotificationService)
-                is NotificationManager manager)
-            {
-                manager.CreateNotificationChannel(channel);
-            }
+        var channel = new NotificationChannel(
+            ChannelId,
+            "EVLAMP playback",
+            NotificationImportance.Low)
+        {
+            Description = "Управление воспроизведением EVLAMP Music"
+        };
+
+        if (GetSystemService(NotificationService)
+            is NotificationManager manager)
+        {
+            manager.CreateNotificationChannel(channel);
         }
     }
 
@@ -197,7 +218,7 @@ public class MusicPlaybackService : Service
         }
         catch
         {
-            // Проигрыватель уже мог остановиться.
+            // Проигрыватель мог уже остановиться.
         }
 
         _player.Release();
