@@ -9,7 +9,7 @@ namespace EVLAMP.Music.Platforms.Android;
 [Service(
     Name = "com.evlamp.music.MusicPlaybackService",
     Exported = false,
-    ForegroundServiceType = Android.Content.PM.ForegroundService.TypeMediaPlayback)]
+    ForegroundServiceType = global::Android.Content.PM.ForegroundService.TypeMediaPlayback)]
 public class MusicPlaybackService : Service
 {
     public const string ActionPlay = "com.evlamp.music.PLAY";
@@ -43,7 +43,7 @@ public class MusicPlaybackService : Service
             _currentTitle = intent?.GetStringExtra(ExtraTitle) ?? "EVLAMP Music";
 
             if (!string.IsNullOrWhiteSpace(uriText))
-                PlayUri(Android.Net.Uri.Parse(uriText), _currentTitle);
+                PlayUri(global::Android.Net.Uri.Parse(uriText), _currentTitle);
             else if (_player != null && !_player.IsPlaying)
             {
                 try
