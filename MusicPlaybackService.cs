@@ -6,7 +6,9 @@ using AndroidX.Core.App;
 
 namespace EVLAMP.Music.Platforms.Android;
 
-[Service(Name = "com.evlamp.music.MusicPlaybackService", Exported = false,
+[Service(
+    Name = "com.evlamp.music.MusicPlaybackService",
+    Exported = false,
     ForegroundServiceType = Android.Content.PM.ForegroundService.TypeMediaPlayback)]
 public class MusicPlaybackService : Service
 {
@@ -15,9 +17,12 @@ public class MusicPlaybackService : Service
     public const string ActionStop = "com.evlamp.music.STOP";
     public const string ExtraUri = "uri";
     public const string ExtraTitle = "title";
+
     private const string ChannelId = "evlamp_playback";
     private const int NotificationId = 4107;
+
     private MediaPlayer? _player;
+    private string _currentTitle = "EVLAMP Music";
 
     public override void OnCreate()
     {
@@ -25,20 +30,39 @@ public class MusicPlaybackService : Service
         CreateChannel();
     }
 
-    public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
+    public override StartCommandResult OnStartCommand(
+        Intent? intent,
+        StartCommandFlags flags,
+        int startId)
     {
         var action = intent?.Action;
+
         if (action == ActionPlay)
         {
             var uriText = intent?.GetStringExtra(ExtraUri);
-            var title = intent?.GetStringExtra(ExtraTitle) ?? "EVLAMP Music";
+            _currentTitle = intent?.GetStringExtra(ExtraTitle) ?? "EVLAMP Music";
+
             if (!string.IsNullOrWhiteSpace(uriText))
-                PlayUri(Android.Net.Uri.Parse(uriText), title);
+                PlayUri(Android.Net.Uri.Parse(uriText), _currentTitle);
+            else if (_player != null && !_player.IsPlaying)
+            {
+                try
+                {
+                    _player.Start();
+                    ShowNotification(_currentTitle, true);
+                }
+                catch
+                {
+                    StopPlayer();
+                }
+            }
         }
         else if (action == ActionPause)
         {
-            if (_player?.IsPlaying == true) _player.Pause();
-            ShowNotification("На паузе", false);
+            if (_player?.IsPlaying == true)
+                _player.Pause();
+
+            ShowNotification(_currentTitle, false);
         }
         else if (action == ActionStop)
         {
@@ -46,7 +70,8 @@ public class MusicPlaybackService : Service
             StopForeground(StopForegroundFlags.Remove);
             StopSelf();
         }
-        return StartCommandResult.Sticky;
+
+        return StartCommandResult.NotSticky;
     }
 
     private void PlayUri(Android.Net.Uri uri, string title)
@@ -54,27 +79,43 @@ public class MusicPlaybackService : Service
         try
         {
             StopPlayer();
+
+            _currentTitle = title;
             _player = new MediaPlayer();
-            _player.SetAudioAttributes(new AudioAttributes.Builder()
-                .SetUsage(AudioUsageKind.Media).SetContentType(AudioContentType.Music).Build());
+
+            _player.SetAudioAttributes(
+                new AudioAttributes.Builder()
+                    .SetUsage(AudioUsageKind.Media)
+                    .SetContentType(AudioContentType.Music)
+                    .Build());
+
             _player.SetDataSource(this, uri);
             _player.SetWakeMode(this, WakeLockFlags.Partial);
+
             _player.Prepared += (_, _) =>
             {
-                _player?.Start();
-                ShowNotification(title, true);
+                if (_player == null)
+                    return;
+
+                _player.Start();
+                ShowNotification(_currentTitle, true);
             };
+
             _player.Completion += (_, _) =>
             {
-                // MainPage controls queue/auto-next in this first version.
                 ShowNotification("Трек завершён", false);
             };
+
             _player.Error += (_, args) =>
             {
                 ShowNotification("Ошибка аудио", false);
                 args.Handled = true;
             };
-            StartForeground(NotificationId, BuildNotification(title, true));
+
+            StartForeground(
+                NotificationId,
+                BuildNotification(title, true));
+
             _player.PrepareAsync();
         }
         catch
@@ -87,43 +128,78 @@ public class MusicPlaybackService : Service
 
     private Notification BuildNotification(string title, bool playing)
     {
-        var pauseIntent = new Intent(this, Class).SetAction(playing ? ActionPause : ActionPlay);
-        var pausePending = PendingIntent.GetService(this, 1, pauseIntent,
-            PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
+        var action = playing ? ActionPause : ActionPlay;
+
+        var actionIntent = new Intent(this, Class)
+            .SetAction(action);
+
+        var pendingIntent = PendingIntent.GetService(
+            this,
+            1,
+            actionIntent,
+            PendingIntentFlags.UpdateCurrent |
+            PendingIntentFlags.Immutable);
+
         var builder = new NotificationCompat.Builder(this, ChannelId)
             .SetContentTitle(title)
-            .SetContentText(playing ? "EVLAMP Music • воспроизведение" : "EVLAMP Music • пауза")
+            .SetContentText(
+                playing
+                    ? "EVLAMP Music • воспроизведение"
+                    : "EVLAMP Music • пауза")
             .SetSmallIcon(global::Android.Resource.Drawable.IcMediaPlay)
             .SetOngoing(playing)
             .SetOnlyAlertOnce(true)
-            .AddAction(playing ? global::Android.Resource.Drawable.IcMediaPause : global::Android.Resource.Drawable.IcMediaPlay,
-                playing ? "Пауза" : "Продолжить", pausePending);
+            .AddAction(
+                playing
+                    ? global::Android.Resource.Drawable.IcMediaPause
+                    : global::Android.Resource.Drawable.IcMediaPlay,
+                playing ? "Пауза" : "Продолжить",
+                pendingIntent);
+
         return builder.Build();
     }
 
     private void ShowNotification(string title, bool playing)
     {
-        var manager = NotificationManagerCompat.From(this);
-        manager.Notify(NotificationId, BuildNotification(title, playing));
+        NotificationManagerCompat.From(this)
+            .Notify(NotificationId, BuildNotification(title, playing));
     }
 
     private void CreateChannel()
     {
         if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
         {
-            var channel = new NotificationChannel(ChannelId, "EVLAMP playback", NotificationImportance.Low)
+            var channel = new NotificationChannel(
+                ChannelId,
+                "EVLAMP playback",
+                NotificationImportance.Low)
             {
                 Description = "Управление воспроизведением EVLAMP Music"
             };
-            GetSystemService(NotificationService) is NotificationManager manager
-                .CreateNotificationChannel(channel);
+
+            if (GetSystemService(NotificationService)
+                is NotificationManager manager)
+            {
+                manager.CreateNotificationChannel(channel);
+            }
         }
     }
 
     private void StopPlayer()
     {
-        if (_player is null) return;
-        try { _player.Stop(); } catch { }
+        if (_player == null)
+            return;
+
+        try
+        {
+            if (_player.IsPlaying)
+                _player.Stop();
+        }
+        catch
+        {
+            // Проигрыватель уже мог остановиться.
+        }
+
         _player.Release();
         _player.Dispose();
         _player = null;
